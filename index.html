@@ -1,1 +1,579 @@
-<h1>Tian的個人图床</h1>
+<!DOCTYPE html>
+<html lang="zh-CH">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>MYGALLERY</title>
+    <style>
+        :root {
+            /* 浅色主题变量 */
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --hover-color: #666666;
+            --slider-bg: rgba(0, 0, 0, 0.1);
+            --slider-track: rgba(0, 0, 0, 0.2);
+            --slider-thumb: #000000;
+            --border-color: rgba(0, 0, 0, 0.05);
+            --info-bar-bg: linear-gradient(to top, rgba(255, 255, 255, 0.9) 0%, transparent 100%);
+            --photo-error-bg: #f5f5f5;
+            --photo-error-color: #888888;
+        }
+        
+        /* 深色主题 */
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --hover-color: #aaaaaa;
+            --slider-bg: rgba(255, 255, 255, 0.1);
+            --slider-track: rgba(255, 255, 255, 0.2);
+            --slider-thumb: #ffffff;
+            --border-color: rgba(255, 255, 255, 0.05);
+            --info-bar-bg: linear-gradient(to top, rgba(18, 18, 18, 0.9) 0%, transparent 100%);
+            --photo-error-bg: #2a2a2a;
+            --photo-error-color: #cccccc;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            cursor: crosshair;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+            height: 100%;
+            overflow: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        /* 导航栏 */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 30px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-color);
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        
+        header h3 a {
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: color 0.3s ease;
+        }
+        
+        nav {
+            display: flex;
+            gap: 30px;
+        }
+        
+        nav a {
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            transition: opacity 0.3s ease, color 0.3s ease;
+        }
+        
+        nav a:hover {
+            opacity: 0.5;
+            text-decoration: none;
+        }
+        
+        a {
+            color: var(--text-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        /* 主内容区域 */
+        main {
+            padding-top: 70px;
+            height: 100vh;
+        }
+        
+        /* 图片显示区域 */
+        .photo-display {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+        
+        /* 每张图片的容器 */
+        .photo-item {
+            position: absolute;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.8s ease;
+        }
+        
+        /* 当前显示的图片 */
+        .photo-item.active {
+            opacity: 1;
+            z-index: 10;
+            pointer-events: auto;
+        }
+        
+        /* 图片元素 */
+        .photo-item img {
+            max-width: 80%;
+            max-height: 85vh;
+            object-fit: contain;
+            display: block;
+        }
+        
+        /* 右侧控制面板 */
+        .control-panel {
+            position: fixed;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            z-index: 100;
+        }
+        
+        /* 滑块容器 */
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        /* 垂直滑块 */
+        .vertical-slider {
+            height: 500px;
+            width: 1px;
+            background: var(--slider-bg);
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .slider-track {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1px;
+            height: 100%;
+            background: var(--slider-track);
+            transition: background-color 0.3s ease;
+        }
+        
+        .slider-thumb {
+            position: absolute;
+            left: -6px;
+            width: 13px;
+            height: 13px;
+            background: var(--slider-thumb);
+            border-radius: 50%;
+            transform: translateY(-50%);
+            transition: transform 0.1s ease, background-color 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .slider-thumb:hover {
+            transform: translateY(-50%) scale(1.1);
+        }
+        
+        /* 页码指示器 */
+        .page-indicator {
+            font-size: 11px;
+            letter-spacing: 1px;
+            opacity: 0.7;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            transition: color 0.3s ease;
+        }
+        
+        /* 底部信息栏 */
+        .info-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            letter-spacing: 0.8px;
+            opacity: 0.7;
+            z-index: 50;
+            background: var(--info-bar-bg);
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+        
+        .info-left,
+        .info-right {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+        
+        /* 主题切换按钮 */
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 11px;
+            letter-spacing: 0.8px;
+            opacity: 0.7;
+            cursor: pointer;
+            padding: 0;
+            transition: opacity 0.3s ease, color 0.3s ease;
+        }
+        
+        .theme-toggle:hover {
+            opacity: 1;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .control-panel {
+                right: 20px;
+                gap: 20px;
+            }
+            
+            .vertical-slider {
+                height: 400px;
+            }
+            
+            .info-bar {
+                padding: 12px 20px;
+                font-size: 10px;
+            }
+            
+            nav {
+                gap: 20px;
+            }
+            
+            .theme-toggle {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 导航栏 -->
+    <header>
+        <h3><a href="#">MYGALLERY</a></h3>
+        <nav>
+            <a href="https://tian.html-5.me">tian.html-5.me</a>
+        </nav>
+    </header>
+    
+    <!-- 主内容区域 -->
+    <main>
+        <!-- 图片显示区域 -->
+        <div class="photo-display" id="photoDisplay">
+            <!-- 图片将通过JS动态加载 -->
+        </div>
+    </main>
+    
+    <!-- 右侧控制面板 -->
+    <div class="control-panel">
+        <div class="slider-container">
+            <div class="vertical-slider" id="verticalSlider">
+                <div class="slider-track"></div>
+                <div class="slider-thumb" id="sliderThumb"></div>
+            </div>
+            <div class="page-indicator" id="pageIndicator">001 / 012</div>
+        </div>
+    </div>
+    
+    <!-- 底部信息栏 -->
+    <div class="info-bar">
+        <div class="info-left">
+            <div>This is Tian's private bed</div>
+        </div>
+        <div class="info-right">
+            <button class="theme-toggle" id="themeToggle">Dark Mode</button>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const photoDisplay = document.getElementById('photoDisplay');
+            const verticalSlider = document.getElementById('verticalSlider');
+            const sliderThumb = document.getElementById('sliderThumb');
+            const pageIndicator = document.getElementById('pageIndicator');
+            const themeToggle = document.getElementById('themeToggle');
+            
+            // 你的图片
+            const localImages = [
+                "tian.html-5.me/draw/1.webp", "tian.html-5.me/draw/2.webp", "tian.html-5.me/draw/3.webp",
+                "tian.html-5.me/about/椎名林檎.webp", "tian.html-5.me/about/宇多田ヒカル.webp", "tian.html-5.me/about/二時間だけのバカンス.webp", "tian.html-5.me/about/浪漫と算盤.webp",
+                "tian.html-5.me/about/工藤美桜.webp", "tian.html-5.me/about/尾碕真花.webp", "tian.html-5.me/about/唤我无名.webp", "tian.html-5.me/about/me and cat.webp", "tian.html-5.me/about/cardistry.webp",
+                "tian.html-5.me/about/Dvnge.webp", "tian.html-5.me/about/huacha.webp", "tian.html-5.me/about/GBA.webp", "tian.html-5.me/about/MYGALLERY.webp", "tian.html-5.me/about/天上欧蒂娜.webp", "tian.html-5.me/about/姬宫安希.webp",
+                "tian.html-5.me/blogs/20251112又买了一副方丹牌…….webp"
+            ];
+            
+            const totalImages = localImages.length;
+            let currentIndex = 0;
+            let isDragging = false;
+            
+            // 初始化主题
+            function initTheme() {
+                const savedTheme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                
+                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                    enableDarkMode();
+                } else {
+                    enableLightMode();
+                }
+            }
+            
+            // 切换主题
+            function toggleTheme() {
+                if (document.body.dataset.theme === 'dark') {
+                    enableLightMode();
+                } else {
+                    enableDarkMode();
+                }
+            }
+            
+            // 启用深色模式
+            function enableDarkMode() {
+                document.body.dataset.theme = 'dark';
+                themeToggle.textContent = 'Light Mode';
+                localStorage.setItem('theme', 'dark');
+            }
+            
+            // 启用浅色模式
+            function enableLightMode() {
+                document.body.dataset.theme = '';
+                themeToggle.textContent = 'Dark Mode';
+                localStorage.setItem('theme', 'light');
+            }
+            
+            // 创建图片容器
+            function createImageContainers() {
+                localImages.forEach((src, index) => {
+                    const container = document.createElement('div');
+                    container.className = 'photo-item';
+                    container.dataset.index = index;
+                    
+                    const img = document.createElement('img');
+                    img.src = `${src}`;
+                    img.alt = `Image ${index + 1}`;
+                    
+                    // 图片错误处理
+                    img.onerror = function() {
+                        this.style.display = 'none';
+                        const errorDiv = document.createElement('div');
+                        errorDiv.style.cssText = `
+                            width: 350px;
+                            height: 350px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            background: var(--photo-error-bg);
+                            color: var(--photo-error-color);
+                            font-size: 16px;
+                            font-family: monospace;
+                        `;
+                        errorDiv.textContent = `PHOTO ${String(index + 1).padStart(3, '0')}`;
+                        container.appendChild(errorDiv);
+                    };
+                    
+                    container.appendChild(img);
+                    photoDisplay.appendChild(container);
+                });
+            }
+            
+            // 更新显示的图片
+            function updateDisplay() {
+                const items = document.querySelectorAll('.photo-item');
+                
+                items.forEach((item, index) => {
+                    item.classList.remove('active');
+                    if (index === currentIndex) {
+                        item.classList.add('active');
+                    }
+                });
+                
+                // 更新页码指示器
+                const currentPage = String(currentIndex + 1).padStart(3, '0');
+                const totalPages = String(totalImages).padStart(3, '0');
+                pageIndicator.textContent = `${currentPage} / ${totalPages}`;
+                
+                // 更新滑块位置
+                updateSliderPosition();
+            }
+            
+            // 更新滑块位置
+            function updateSliderPosition() {
+                const percent = currentIndex / (totalImages - 1);
+                const sliderHeight = verticalSlider.offsetHeight;
+                const thumbHeight = sliderThumb.offsetHeight;
+                const topPosition = percent * (sliderHeight - thumbHeight);
+                
+                sliderThumb.style.top = `${topPosition}px`;
+            }
+            
+            // 根据滑块位置计算图片索引
+            function getIndexFromSliderPosition(y) {
+                const sliderRect = verticalSlider.getBoundingClientRect();
+                const relativeY = Math.max(0, Math.min(y - sliderRect.top, sliderRect.height));
+                const percent = relativeY / sliderRect.height;
+                const index = Math.round(percent * (totalImages - 1));
+                
+                return Math.max(0, Math.min(index, totalImages - 1));
+            }
+            
+            // 设置滑块事件
+            function setupSlider() {
+                // 点击滑块任意位置跳转
+                verticalSlider.addEventListener('click', (e) => {
+                    const index = getIndexFromSliderPosition(e.clientY);
+                    if (index !== currentIndex) {
+                        currentIndex = index;
+                        updateDisplay();
+                    }
+                });
+                
+                // 拖动滑块
+                sliderThumb.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    isDragging = true;
+                    document.body.style.cursor = 'grabbing';
+                    
+                    const onMouseMove = (e) => {
+                        if (!isDragging) return;
+                        
+                        const index = getIndexFromSliderPosition(e.clientY);
+                        if (index !== currentIndex) {
+                            currentIndex = index;
+                            updateDisplay();
+                        }
+                    };
+                    
+                    const onMouseUp = () => {
+                        isDragging = false;
+                        document.body.style.cursor = '';
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                    };
+                    
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                });
+                
+                // 触摸设备支持
+                sliderThumb.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    isDragging = true;
+                    
+                    const onTouchMove = (e) => {
+                        if (!isDragging) return;
+                        
+                        const touch = e.touches[0];
+                        const index = getIndexFromSliderPosition(touch.clientY);
+                        if (index !== currentIndex) {
+                            currentIndex = index;
+                            updateDisplay();
+                        }
+                    };
+                    
+                    const onTouchEnd = () => {
+                        isDragging = false;
+                        document.removeEventListener('touchmove', onTouchMove);
+                        document.removeEventListener('touchend', onTouchEnd);
+                    };
+                    
+                    document.addEventListener('touchmove', onTouchMove);
+                    document.addEventListener('touchend', onTouchEnd);
+                });
+            }
+            
+            // 键盘控制
+            function setupKeyboardControls() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        if (currentIndex < totalImages - 1) {
+                            currentIndex++;
+                            updateDisplay();
+                        }
+                    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        if (currentIndex > 0) {
+                            currentIndex--;
+                            updateDisplay();
+                        }
+                    } else if (e.key === ' ') {
+                        e.preventDefault();
+                        // 空格键：前进一张，循环到最后后回到第一张
+                        currentIndex = (currentIndex + 1) % totalImages;
+                        updateDisplay();
+                    } else if (e.key === 't' || e.key === 'T') {
+                        e.preventDefault();
+                        toggleTheme();
+                    }
+                });
+            }
+            
+            // 初始化
+            function init() {
+                initTheme();
+                createImageContainers();
+                updateDisplay();
+                setupSlider();
+                setupKeyboardControls();
+                
+                // 主题切换按钮事件
+                themeToggle.addEventListener('click', toggleTheme);
+                
+                // 监听系统主题变化
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                    if (!localStorage.getItem('theme')) {
+                        if (e.matches) {
+                            enableDarkMode();
+                        } else {
+                            enableLightMode();
+                        }
+                    }
+                });
+            }
+            
+            // 窗口大小调整时更新滑块位置
+            window.addEventListener('resize', () => {
+                updateSliderPosition();
+            });
+            
+            init();
+        });
+    </script>
+</body>
+
+</html>
